@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "cmake>=3.10"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "curv"
+version = "1.0"
+description = "Calculates the curvature profile for membranes"
+requires-python = ">=3.6"
+authors = [
+    {name = "Weria Pezeshkian", email = "weria.pezeshkian@nbi.ku.dk"},
+    {name = "Fabian Schuhmann", email = "fabian.schuhmann@nbi.ku.dk"},
+    {name = "Isabell Lindahl", email = "isabell.lindahl@nbi.ku.dk"},
+]
+license = {file = "LICENSE"}
+dependencies = ["numpy","networkx","scipy","MDAnalysis"]
+
+[tool.setuptools]
+packages = ["curv"]
+package-dir = {"" = "."}
+
+[project.scripts]
+curv = "curv.run:main"
