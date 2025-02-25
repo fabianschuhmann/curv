@@ -20,7 +20,7 @@ def get_XY(box_size):
     X, Y = np.meshgrid(x, y)
     return X,Y
 
-def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None):
+def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None,filename=""):
     # Plots
     fontsize=24
     box_size=np.load(Dir+"boxsize.npy")
@@ -119,7 +119,10 @@ def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None):
 
 
     plt.tight_layout(rect=[0.1, 0, .9, 1])
-    plt.show()
+    if filename=="":
+        plt.show()
+    else:
+        plt.savefig(filename)
 
 def plot_curvature(args: List[str]) -> None:
     """Main entry point for Domain Placer tool"""
@@ -131,6 +134,7 @@ def plot_curvature(args: List[str]) -> None:
     parser.add_argument('-l3','--layer3',type=str,default="Both",help="Custom name for layer 3. Layer 3 is the base line for the Z fitting plot")
     parser.add_argument('--minimum',type=float,default=None,help="Supply a custom colorbar value for the curvature plots (minimum)")
     parser.add_argument('--maximum',type=float,default=None,help="Supply a custom colorbar value for the curvature plots (maximum)")
+    parser.add_argument('-o','--outfile',type=str,default="",help="Specify the path to save the image, if none is given, image is shown.")
    
     args = parser.parse_args(args)
     logging.basicConfig(level=logging.INFO)
@@ -141,7 +145,7 @@ def plot_curvature(args: List[str]) -> None:
         minmax=None
 
     try:
-        draw(Dir=args.numpys_directory,layer1=args.layer1,layer2=args.layer2,layer3=args.layer3,minmax=minmax)
+        draw(Dir=args.numpys_directory,layer1=args.layer1,layer2=args.layer2,layer3=args.layer3,minmax=minmax,filename=args.outfile)
 
     except Exception as e:
         logger.error(f"Error: {e}")

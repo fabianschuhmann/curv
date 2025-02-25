@@ -49,7 +49,8 @@ def main():
         help='choice of which module to run, run curv <module> -h for detailed help\n\
 <write_ndx> prepares an index file\n\
 <calculate> calculates the curvature\n\
-<plot> plots the curvature data based on a directory with the files from curvature'
+<plot> plots the curvature data based on a directory with the files from curvature, submodules include plot curvature and plot height\n\
+<height> allows to calculate the height of a selection from the surface in z direction'
     )
 
     parser.add_argument(
