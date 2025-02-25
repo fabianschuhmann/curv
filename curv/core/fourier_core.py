@@ -103,7 +103,7 @@ class Fourier_Series_Function:
         denominator = (1 + fx**2 + fy**2)**(3/2)
     
         C = numerator / denominator
-        return C
+        return -C
 
     def Update_coff(self, coff1,coff2):
          self.Anm = 0.5*(coff1+coff2)
