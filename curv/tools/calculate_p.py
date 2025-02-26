@@ -80,7 +80,7 @@ def calc_p(out_dir,u,ndx,From=0,Until=None,Step=1,layer_string="Both",workers=2)
 
     partial_func = functools.partial(parallal_frames, ndx=ndx,box_size=box_size,layer_string=layer_string)
     with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
-        results=list(executor.map(parallal_frames,u.trajectory[From:Until:Step]))
+        results=list(executor.map(partial_func,u.trajectory[From:Until:Step]))
     
     
     for count,result in enumerate(results):
