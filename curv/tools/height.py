@@ -51,7 +51,7 @@ def calc_height(out_dir,u,ndx,From=0,Until=None,Step=1,selection="name P"):
 
     count = 0
     results={}
-    for t,ts in enumerate(u.trajectory[From:Until:Step]):
+    for t,ts in enumerate(tqdm(u.trajectory[From:Until:Step])):
         count += 1
         #if count >= 10:
         #    break
@@ -67,7 +67,7 @@ def calc_height(out_dir,u,ndx,From=0,Until=None,Step=1,selection="name P"):
         #Z_fitted=Z_fitted
 
         interp_func = RectBivariateSpline(X[0, :], Y[:, 0], Z_fitted)
-        for atom in tqdm(atoms_of_interest):
+        for atom in atoms_of_interest:
             pos=atom.position
             name=f"{atom.resname}_{atom.resid}"
             index=atom.index
