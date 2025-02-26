@@ -6,7 +6,7 @@ import logging
 from typing import List, Optional, Sequence, Dict
 from ..core.fourier_core import Fourier_Series_Function
 import os
-from concurrent.futures
+import concurrent.futures
 import functools
 
 logger = logging.getLogger(__name__)
@@ -78,11 +78,11 @@ def calc_p(out_dir,u,ndx,From=0,Until=None,Step=1,layer_string="Both",workers=2)
     box_size=u.trajectory[0].dimensions[:3]
     np.save(file=f"{out_dir}/boxsize.npy",arr=box_size)
 
-    partial_func = functools.partial(parallal_frames, ndx=ndx,box_size=box_size,layer_string=layer_string)
+    partial_func = functools.partial(parallal_frames, ndx=ndx, box_size=box_size, layer_string=layer_string)
     with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
         results=list(executor.map(partial_func,u.trajectory[From:Until:Step]))
     
-    
+    #one might consider giving the count list to the parallel and have it save directly, is then hard drive write speed the bottleneck?
     for count,result in enumerate(results):
         np.save(f"{out_dir}/Z_fitted_{count+1}_{Layer}.npy",result[0])
         np.save(f"{out_dir}/curvature_frame_{count+1}_{Layer}.npy", result[1])
