@@ -26,7 +26,7 @@ def rotation_matrix(theta):
     return np.array([[np.cos(theta_rad), -np.sin(theta_rad)],
                      [np.sin(theta_rad), np.cos(theta_rad)]])
 
-def rotation_logic(Dir,PATH):
+def rotation_logic(Dir,PATH,u):
     curvature_data = []
     curvature_info = np.load(PATH)  # Load curvature data
     # Extract frame number from filename
@@ -38,8 +38,6 @@ def rotation_logic(Dir,PATH):
     center_x = X/2
     center_y = Y/2
     distance_from_center = np.sqrt((X - center_x)**2 + (Y - center_y)**2)
-    with open("universe.pkl", "rb") as f:
-        u = pickle.load(f)
     
     protein = u.select_atoms("protein")
     com_protein = protein.center_of_mass()
@@ -109,11 +107,13 @@ def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None,filename=""
     fontsize=24
     box_size=np.load(Dir+"boxsize.npy")
     X,Y = get_XY(box_size)
+    with open(Dir+"universe.pkl", "rb") as f:
+        u = pickle.load(f)
     # Upper layer 
     curvature_data1=[]
     for file_path in glob.glob(Dir+f"curvature_frame_*_{layer2}.npy"):
         if rotation == True:
-            curvature_data1.append(rotation_logic(Dir, file_path))
+            curvature_data1.append(rotation_logic(Dir, file_path,u))
         else:
             curvature_data1.append(np.load(file_path))
     curvature_data1 = np.asarray(curvature_data1)
@@ -123,7 +123,7 @@ def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None,filename=""
     curvature_data2=[]
     for file_path in glob.glob(Dir+f"curvature_frame_*_{layer1}.npy"):
         if rotation == True:
-            curvature_data2.append(rotation_logic(Dir,file_path))
+            curvature_data2.append(rotation_logic(Dir,file_path,u))
         else:
             curvature_data2.append(np.load(file_path))
     curvature_data2 = np.asarray(curvature_data2)
@@ -133,7 +133,7 @@ def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None,filename=""
     curvature_data3=[]
     for file_path in glob.glob(Dir+f"curvature_frame_*_{layer3}.npy"):
         if rotation == True:
-            curvature_data3.append(rotation_logic(Dir,file_path))
+            curvature_data3.append(rotation_logic(Dir,file_path,u))
         else:
             curvature_data3.append(np.load(file_path))
     curvature_data3 = np.asarray(curvature_data3)
@@ -228,7 +228,7 @@ def plot_curvature(args: List[str]) -> None:
     parser.add_argument('--minimum',type=float,default=None,help="Supply a custom colorbar value for the curvature plots (minimum)")
     parser.add_argument('--maximum',type=float,default=None,help="Supply a custom colorbar value for the curvature plots (maximum)")
     parser.add_argument('-o','--outfile',type=str,default="",help="Specify the path to save the image, if none is given, image is shown.")
-    parser.add_argument('-r','--rotation',type=bool,default=False,help="Specify if each frame's fourier transform should be rotated such that each frame's protein has the same orientation")
+    parser.add_argument('-r','--rotation',default=False,action='store_true',help="Specify if each frame's fourier transform should be rotated such that each frame's protein has the same orientation")
    
     args = parser.parse_args(args)
     logging.basicConfig(level=logging.INFO)

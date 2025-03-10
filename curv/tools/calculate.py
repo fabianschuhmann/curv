@@ -39,8 +39,6 @@ def fourier_by_layer(layer_group,box_size,Nx=2,Ny=2):
     return fourier
 
 def calc(out_dir,u,ndx,From=0,Until=None,Step=1,layer_string="Both"):
-    with open("universe.pkl", "wb") as f:
-        pickle.dump(u, f)
     if Until is None:
         Until=len(u.trajectory)
     ndx = read_ndx(ndx)
@@ -115,6 +113,9 @@ def calculate(args: List[str]) -> None:
     args = parser.parse_args(args)
     logging.basicConfig(level=logging.INFO)
 
+    if not os.path.exists(args.out):
+        os.makedirs(args.out)
+
     if args.clear:
         for filename in os.listdir(args.out):
             if filename.endswith('.npy'):
@@ -126,6 +127,8 @@ def calculate(args: List[str]) -> None:
 
     try:
         universe=mda.Universe(args.structure,args.trajectory)
+        with open(args.out+"/universe.pkl", "wb") as f:
+            pickle.dump(universe, f)
         calc(out_dir=args.out,u=universe,ndx=args.index,From=args.From,Until=args.Until,Step=args.Step,layer_string=args.leaflet)
 
     except Exception as e:
