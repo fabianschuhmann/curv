@@ -112,6 +112,9 @@ def calculate(args: List[str]) -> None:
     args = parser.parse_args(args)
     logging.basicConfig(level=logging.INFO)
 
+    if not os.path.exists(args.out):
+        os.makedirs(args.out)
+
     if args.clear:
         for filename in os.listdir(args.out):
             if filename.endswith('.npy'):
