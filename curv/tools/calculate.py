@@ -107,10 +107,14 @@ def calculate(args: List[str]) -> None:
     parser.add_argument('-U','--Until',default=None,type=int,help="Discard all frames in the trajectory after to the frame supplied here")
     parser.add_argument('-S','--Step',default=1,type=int,help="Traverse the trajectory with a step length supplied here")
     parser.add_argument('-l','--leaflet',default="Both",help="Choose which membrane leaflet to calculate. Default is Both")
+    parser.add_argument('--worker',default=1,type=int,help="Specify the number of cpus for parallelization")
     parser.add_argument('-c','--clear',default=False,action='store_true',help="Remove old numpy array in out directiory. NO WARNING IS GIVEN AND NO BACKUP IS MADE")
     
     args = parser.parse_args(args)
     logging.basicConfig(level=logging.INFO)
+
+    if not os.path.exists(args.out):
+        os.makedirs(args.out)
 
     if args.clear:
         for filename in os.listdir(args.out):
@@ -123,7 +127,11 @@ def calculate(args: List[str]) -> None:
 
     try:
         universe=mda.Universe(args.structure,args.trajectory)
-        calc(out_dir=args.out,u=universe,ndx=args.index,From=args.From,Until=args.Until,Step=args.Step,layer_string=args.leaflet)
+        if args.worker==1:
+            calc(out_dir=args.out,u=universe,ndx=args.index,From=args.From,Until=args.Until,Step=args.Step,layer_string=args.leaflet)
+        else:
+            from ..tools.calculate_p import calc_p
+            calc_p(out_dir=args.out,u=universe,ndx=args.index,From=args.From,Until=args.Until,Step=args.Step,layer_string=args.leaflet,worker=args.worker)
 
     except Exception as e:
         logger.error(f"Error: {e}")

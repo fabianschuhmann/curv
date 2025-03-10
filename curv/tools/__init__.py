@@ -5,5 +5,6 @@ from .plot_curvature import plot_curvature
 from .plot_height import plot_height
 from .write_ndx import write_ndx
 from .height import height
+from .calculate_p import calc_p
 
-__all__ = ["calculate", "plot_curvature","plot_height","write_ndx","height"]
+__all__ = ["calculate", "plot_curvature","plot_height","write_ndx","height","calculate_p"]

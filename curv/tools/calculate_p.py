@@ -73,7 +73,7 @@ def parallal_frames(u,ndx,box_size,layer_string):
         result.append((Z_fitted,curvature,Layer))
     return result
 
-def calc_p(out_dir,u,ndx,From=0,Until=None,Step=1,layer_string="Both",workers=2):
+def calc_p(out_dir,u,ndx,From=0,Until=None,Step=1,layer_string="Both",worker=2):
     if Until is None:
         Until=len(u.trajectory)
     ndx = read_ndx(ndx)
@@ -81,7 +81,7 @@ def calc_p(out_dir,u,ndx,From=0,Until=None,Step=1,layer_string="Both",workers=2)
     np.save(file=f"{out_dir}/boxsize.npy",arr=box_size)
 
     partial_func = functools.partial(parallal_frames, ndx=ndx, box_size=box_size, layer_string=layer_string)
-    with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=worker) as executor:
         results=list(executor.map(partial_func,u.trajectory[From:Until:Step]))
     
     #one might consider giving the count list to the parallel and have it save directly, is then hard drive write speed the bottleneck?

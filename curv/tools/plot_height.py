@@ -24,7 +24,6 @@ def draw(Dir,name,hunit,time):
         data.append(np.load(file_path))
         names.append(file_path)
     data=np.asarray(data)
-    print(data.shape)
     if time is None:
         time=data.shape[1]-1
  
