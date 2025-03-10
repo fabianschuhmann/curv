@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import glob
 import matplotlib.colors as mcolors
 import warnings
+import pickle
 
 warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
@@ -20,46 +21,123 @@ def get_XY(box_size):
     X, Y = np.meshgrid(x, y)
     return X,Y
 
-def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None,filename="", rotate=False):
+def rotation_matrix(theta):
+    theta_rad = np.radians(theta)
+    return np.array([[np.cos(theta_rad), -np.sin(theta_rad)],
+                     [np.sin(theta_rad), np.cos(theta_rad)]])
+
+def rotation_logic(Dir,PATH):
+    curvature_data = []
+    curvature_info = np.load(PATH)  # Load curvature data
+    # Extract frame number from filename
+    ts_str = PATH.split("_")[-2]  # Extracts the frame number
+    ts = int(ts_str)  # Convert to integer
+    box_size=np.load(Dir+"boxsize.npy")
+    side_of_box = np.array([box_size[0], box_size[1]/2, box_size[2]/2])
+    X,Y = get_XY(box_size)
+    center_x = X/2
+    center_y = Y/2
+    distance_from_center = np.sqrt((X - center_x)**2 + (Y - center_y)**2)
+    with open("universe.pkl", "rb") as f:
+        u = pickle.load(f)
+    
+    protein = u.select_atoms("protein")
+    com_protein = protein.center_of_mass()
+
+    Lx, Ly, Lz = u.dimensions[:3]
+ 
+    dist_to_x_edge = min(com_protein[0], Lx - com_protein[0])
+    dist_to_y_edge = min(com_protein[1], Ly - com_protein[1])
+    radius_threshold = min(dist_to_x_edge, dist_to_y_edge)
+
+    u.trajectory[ts-1]  # Move to the corresponding frame
+
+    # Generate the grid of x, y positions corresponding to the curvature matrix
+    x_coords, y_coords = np.meshgrid(
+        np.linspace(-side_of_box[0] / 2, side_of_box[0] / 2, curvature_info.shape[1]),
+        np.linspace(-side_of_box[1] / 2, side_of_box[1] / 2, curvature_info.shape[0])
+    )
+
+    # Find farthest away atom from protein center
+    distances = np.linalg.norm(protein.positions - com_protein, axis=1)
+    farthest_atom_index = np.argmax(distances)
+
+    # Prepare vectors
+    origin = protein.center_of_mass()
+    point2 = protein.positions[farthest_atom_index]
+    ba = point2 - origin  # Vector from `o` to `p2`
+    bc = side_of_box - origin  # Vector from `o` to reference side of the box
+
+    # Project vectors onto XY-plane
+    ba_2 = np.array([ba[0], ba[1]])
+    bc_2 = np.array([bc[0], bc[1]])
+
+    # Compute rotation angle `theta`
+    cos_theta = np.dot(ba_2, bc_2) / (np.linalg.norm(ba_2) * np.linalg.norm(bc_2))
+    cos_theta = np.clip(cos_theta, -1, 1)  # Avoid floating-point errors
+    theta = np.degrees(np.arccos(cos_theta))
+
+    # Compute rotation matrix
+    R = rotation_matrix(-1*theta)
+    
+    # Copy curvature matrix
+    rotated_curvature = curvature_info.copy()
+
+    rotated_curvature_ = []
+    # Rotate only points within the 75 nm radius
+    for i in range(curvature_info.shape[0]):  # Iterate over rows
+        for j in range(curvature_info.shape[1]):  # Iterate over columns
+            x, y = x_coords[i, j], y_coords[i, j]
+            distance = np.sqrt(x**2 + y**2)  # Distance from the center
+            
+            if distance <= radius_threshold:
+                rotated_x, rotated_y = np.dot(R, np.array([x, y]))  # Rotate (x, y)
+                
+                # Find closest indices in the original grid
+                i_new = np.argmin(np.abs(y_coords[:, 0] - rotated_y))
+                j_new = np.argmin(np.abs(x_coords[0, :] - rotated_x))
+
+                # Assign rotated values while keeping boundaries
+                if 0 <= i_new < curvature_info.shape[0] and 0 <= j_new < curvature_info.shape[1]:
+                    rotated_curvature[i_new, j_new] = curvature_info[i, j]
+
+    # Store rotated curvature matrix
+    return rotated_curvature
+
+def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None,filename="", rotation = False):
     # Plots
     fontsize=24
     box_size=np.load(Dir+"boxsize.npy")
     X,Y = get_XY(box_size)
-    center_x = X/2
-    center_y = Y/2
-
-    with open('radius_threshold.txt', 'r') as f:
-        radius_threshold = int(float(f.read()))
-
-    distance_from_center = np.sqrt((X - center_x)**2 + (Y - center_y)**2)
-    mask = distance_from_center <= radius_threshold
-
-    # Upper layer
-    prefix = "curvature_frame_" if rotate == False else "curvature_rotation_"
+    # Upper layer 
     curvature_data1=[]
-    for file_path in glob.glob(Dir+prefix+f"*_{layer2}.npy"):
-        curvature_data1.append(np.load(file_path))
+    for file_path in glob.glob(Dir+f"curvature_frame_*_{layer2}.npy"):
+        if rotation == True:
+            curvature_data1.append(rotation_logic(Dir, file_path))
+        else:
+            curvature_data1.append(np.load(file_path))
     curvature_data1 = np.asarray(curvature_data1)
     curvature_data1=np.mean(curvature_data1,axis=0)
 
     # Lower layer 
     curvature_data2=[]
-    for file_path in glob.glob(Dir+prefix+f"*_{layer1}.npy"):
-        curvature_data2.append(np.load(file_path))
+    for file_path in glob.glob(Dir+f"curvature_frame_*_{layer1}.npy"):
+        if rotation == True:
+            curvature_data2.append(rotation_logic(Dir,file_path))
+        else:
+            curvature_data2.append(np.load(file_path))
     curvature_data2 = np.asarray(curvature_data2)
     curvature_data2=np.mean(curvature_data2,axis=0)
 
     # Middle layer
     curvature_data3=[]
-    for file_path in glob.glob(Dir+prefix+f"*_{layer3}.npy"):
-        curvature_data3.append(np.load(file_path))
+    for file_path in glob.glob(Dir+f"curvature_frame_*_{layer3}.npy"):
+        if rotation == True:
+            curvature_data3.append(rotation_logic(Dir,file_path))
+        else:
+            curvature_data3.append(np.load(file_path))
     curvature_data3 = np.asarray(curvature_data3)
     curvature_data3=np.mean(curvature_data3,axis=0)
-
-    #if(rotate == True):
-    #    curvature_data1 = np.ma.masked_where(~mask , curvature_data1)
-    #    curvature_data2 = np.ma.masked_where(~mask , curvature_data2)
-    #    curvature_data3 = np.ma.masked_where(~mask , curvature_data3)
 
     catted=[curvature_data1,curvature_data2,curvature_data3]
 
@@ -71,18 +149,12 @@ def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None,filename=""
         bmin, bmax =np.min([np.min(x) for x in catted]),np.max([np.max(x) for x in catted])
         print(f"Automatically, the values would have been assigned to {np.round(bmin,3)} and {np.round(bmax,3)}")
 
-
     # Thickness
-    prefix = "Z_fitted_" if rotate == False else "Z_fitted_rotation_"
     Z_fitted=[]
-    for file_path in glob.glob(Dir+prefix+f"*_{layer3}.npy"):
+    for file_path in glob.glob(Dir+f"Z_fitted_*_{layer3}.npy"):
         Z_fitted.append(np.load(file_path))
     Z_fitted = np.asarray(Z_fitted)
     Z_fitted=np.mean(Z_fitted,axis=0)
-
-    #if(rotate == True):
-    #    curvature_data3 = np.ma.masked_where(~mask , curvature_data3)
-
 
     fig, axes = plt.subplots(2, 2, figsize=(24,28))  # Create 1 row, 2 columns of subplots
     axes=axes.flatten()
@@ -167,9 +239,8 @@ def plot_curvature(args: List[str]) -> None:
         minmax=None
 
     try:
-        draw(Dir=args.numpys_directory,layer1=args.layer1,layer2=args.layer2,layer3=args.layer3,minmax=minmax,filename=args.outfile,rotate=args.rotation)
+        draw(Dir=args.numpys_directory,layer1=args.layer1,layer2=args.layer2,layer3=args.layer3,minmax=minmax,filename=args.outfile,rotation=args.rotation)
 
     except Exception as e:
         logger.error(f"Error: {e}")
         raise
-
