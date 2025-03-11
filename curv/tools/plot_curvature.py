@@ -30,16 +30,16 @@ def rotation_logic(Dir,PATH,u):
     curvature_data = []
     curvature_info = np.load(PATH)  # Load curvature data
     # Extract frame number from filename
-    ts_str = PATH.split("_")[-2]  # Extracts the frame number
+    ts_str = PATH.split("_")[-2]  # Extracts the frame number #XX: could replact with "".join(filter(str.isdigit,s))[0] to get directly
     ts = int(ts_str)  # Convert to integer
     box_size=np.load(Dir+"boxsize.npy")
     side_of_box = np.array([box_size[0], box_size[1]/2, box_size[2]/2])
     X,Y = get_XY(box_size)
     center_x = X/2
     center_y = Y/2
-    distance_from_center = np.sqrt((X - center_x)**2 + (Y - center_y)**2)
+    distance_from_center = np.sqrt((X - center_x)**2 + (Y - center_y)**2) #XX: feels like np.linalg.norm for poor people
     
-    protein = u.select_atoms("protein")
+    protein = u.select_atoms("protein")#XX: needs to be handled by an argument, as protein is not always a valid selection (in cg for instance)
     com_protein = protein.center_of_mass()
 
     Lx, Ly, Lz = u.dimensions[:3]
@@ -57,9 +57,9 @@ def rotation_logic(Dir,PATH,u):
     )
 
     # Find farthest away atom from protein center
-    distances = np.linalg.norm(protein.positions - com_protein, axis=1)
+    distances = np.linalg.norm(protein.positions[:,:2] - com_protein[:2], axis=1)#XX:check farthest atom only in x-y, z distance shouldn't matter for rotation
     farthest_atom_index = np.argmax(distances)
-
+    #XX: checking distances only in xy and the vectors seems also reasonable below. if u have a long protein in z, the rotation could be off completely by choosing a atom far away at the bottom.
     # Prepare vectors
     origin = protein.center_of_mass()
     point2 = protein.positions[farthest_atom_index]
@@ -82,7 +82,7 @@ def rotation_logic(Dir,PATH,u):
     rotated_curvature = curvature_info.copy()
 
     rotated_curvature_ = []
-    # Rotate only points within the 75 nm radius
+    # Rotate only points within the 75 nm radius #XX: where does the 75 come from? and where is it in the code?
     for i in range(curvature_info.shape[0]):  # Iterate over rows
         for j in range(curvature_info.shape[1]):  # Iterate over columns
             x, y = x_coords[i, j], y_coords[i, j]
