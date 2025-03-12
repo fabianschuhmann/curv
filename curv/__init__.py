@@ -8,9 +8,11 @@ from .tools.plot_curvature import plot_curvature
 from .tools.plot_height import plot_height
 from .tools.write_ndx import write_ndx
 from .tools.height import height
+from .tools.calc_vectors import calc_vectors
 
 
 
 
-__all__ = ["calculate", "plot_curvature","plot_height","write_ndx","height"]
+__all__ = ["calculate", "plot_curvature","plot_height","write_ndx","height","calc_vectors"]
 __version__ = "1.0"
+

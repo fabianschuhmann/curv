@@ -1,0 +1,64 @@
+import MDAnalysis as mda
+import numpy as np
+from tqdm import tqdm
+import argparse
+import logging
+from typing import List, Optional, Sequence, Dict
+from ..core.fourier_core import Fourier_Series_Function
+from scipy.spatial import distance_matrix as dm
+import networkx as nx
+import pandas as pd
+
+logger = logging.getLogger(__name__)
+
+def get_rotation_angles(out_dir,u,sele):
+    u.trajectory[0]
+    Lx, Ly, Lz = u.dimensions[:3]
+    side_of_box = np.array([Lx, Ly/2, Lz/2])
+    selection=u.select_atoms(sele)
+    com_selection = selection.center_of_mass()
+    dist_to_x_edge = min(com_selection[0], Lx - com_selection[0])
+    dist_to_y_edge = min(com_selection[1], Ly - com_selection[1])
+    radius_threshold = min(dist_to_x_edge, dist_to_y_edge)
+    with open('radius_threshold.txt', 'w') as f:
+        f.write(str(radius_threshold))
+    
+    o_list = []
+    p_list = []
+    for ts in u.trajectory:
+        selection=u.select_atoms(sele)
+        com_selection = selection.center_of_mass()
+        o_list.append(com_selection)
+        
+        distances = np.linalg.norm(selection.positions[:,:2] - com_selection[:2], axis=1)
+        farthest_atom_index = np.argmax(distances)
+        farthest_from_selection = selection.positions[farthest_atom_index]
+        p_list.append(farthest_from_selection)
+
+    #df = pd.DataFrame({'o': o_list, 'p': p_list})
+    o_array = np.array(o_list)
+    p_array = np.array(p_list)
+    result_array = np.column_stack((o_array, p_array))
+    
+    np.savetxt(f'o_{out_dir}', o_array)
+    np.savetxt(f'p_{out_dir}', p_array)
+
+def calc_vectors(args: List[str]) -> None:
+    """Main entry point for Domain Placer tool"""
+    parser = argparse.ArgumentParser(description="Write an index file to be used for other curv tasks",
+                                   formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('-f','--trajectory',type=str,help="Specify the path to the trajectory file")
+    parser.add_argument('-s','--structure',type=str,help="Specify the path to the structure file")
+    parser.add_argument('-o','--out',default="rotation_vectors.txt",type=str,help="Specify a path to the to written rotation vector file")
+    parser.add_argument('-n','--selection',type=str,help="Sepcifies reference point for the rotation")
+    
+    args = parser.parse_args(args)
+    logging.basicConfig(level=logging.INFO)
+
+    try:
+        universe=mda.Universe(args.structure,args.trajectory)
+        get_rotation_angles(out_dir=args.out,u=universe,sele=args.selection)
+
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        raise
