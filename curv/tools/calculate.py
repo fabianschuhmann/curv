@@ -127,8 +127,6 @@ def calculate(args: List[str]) -> None:
 
     try:
         universe=mda.Universe(args.structure,args.trajectory)
-        with open(args.out+"/universe.pkl", "wb") as f:
-            pickle.dump(universe, f)
         calc(out_dir=args.out,u=universe,ndx=args.index,From=args.From,Until=args.Until,Step=args.Step,layer_string=args.leaflet)
 
     except Exception as e:
