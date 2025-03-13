@@ -132,3 +132,4 @@ def calculate(args: List[str]) -> None:
     except Exception as e:
         logger.error(f"Error: {e}")
         raise
+

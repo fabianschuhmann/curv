@@ -26,11 +26,12 @@ def rotation_matrix(theta):
     return np.array([[np.cos(theta_rad), -np.sin(theta_rad)],
                      [np.sin(theta_rad), np.cos(theta_rad)]])
 
-def rotation_logic(Dir,PATH, o, p):
+def rotation_logic(Dir,PATH, o, p, rt, bs):
+    radius_threshold = rt
     curvature_data = []
     curvature_info = np.load(PATH)  # Load curvature data
     
-    box_size=np.load(Dir+"boxsize.npy")
+    box_size = bs
     side_of_box = np.array([box_size[0], box_size[1]/2, box_size[2]/2])
 
     ba = p - o  # Vector from `o` to `p2`
@@ -50,10 +51,7 @@ def rotation_logic(Dir,PATH, o, p):
         np.linspace(-side_of_box[0] / 2, side_of_box[0] / 2, curvature_info.shape[1]),
         np.linspace(-side_of_box[1] / 2, side_of_box[1] / 2, curvature_info.shape[0])
     )
-
-    with open('radius_threshold.txt', 'r') as f:
-        radius_threshold = float(f.read().strip())
-
+    
     # Compute rotation matrix
     R = rotation_matrix(-1*theta)
     
@@ -85,14 +83,18 @@ def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None, rotation_s
     fontsize=24
     box_size=np.load(Dir+"boxsize.npy")
     X,Y = get_XY(box_size)
-    o_array = np.loadtxt(f'o_{rotation_suffix}')
-    p_array = np.loadtxt(f'o_{rotation_suffix}')
+    if rotation_suffix != "":
+        o_array = np.load(f'{rotation_suffix}_o.npy')
+        p_array = np.load(f'{rotation_suffix}_p.npy')
+        
+    with open('radius_threshold.txt', 'r') as f:
+        radius_threshold = float(f.read().strip())
     # Upper layer 
     curvature_data1=[]
     for file_path in glob.glob(Dir+f"curvature_frame_*_{layer2}.npy"):
         if rotation_suffix != "":
             frame_idx = int(file_path.split("_")[-2]) - 1
-            curvature_data1.append(rotation_logic(Dir, file_path, o_array[frame_idx], p_array[frame_idx]))
+            curvature_data1.append(rotation_logic(Dir, file_path, o_array[frame_idx], p_array[frame_idx], radius_threshold, box_size))
         else:
             curvature_data1.append(np.load(file_path))
     curvature_data1 = np.asarray(curvature_data1)
@@ -103,7 +105,7 @@ def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None, rotation_s
     for file_path in glob.glob(Dir+f"curvature_frame_*_{layer1}.npy"):
         if rotation_suffix  != "":
             frame_idx = int(file_path.split("_")[-2]) - 1
-            curvature_data2.append(rotation_logic(Dir, file_path, o_array[frame_idx], p_array[frame_idx]))
+            curvature_data2.append(rotation_logic(Dir, file_path, o_array[frame_idx], p_array[frame_idx], radius_threshold, box_size))
         else:
             curvature_data2.append(np.load(file_path))
     curvature_data2 = np.asarray(curvature_data2)
@@ -114,7 +116,7 @@ def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None, rotation_s
     for file_path in glob.glob(Dir+f"curvature_frame_*_{layer3}.npy"):
         if rotation_suffix  != "":
             frame_idx = int(file_path.split("_")[-2]) - 1
-            curvature_data3.append(rotation_logic(Dir, file_path, o_array[frame_idx], p_array[frame_idx]))
+            curvature_data3.append(rotation_logic(Dir, file_path, o_array[frame_idx], p_array[frame_idx], radius_threshold, box_size))
         else:
             curvature_data3.append(np.load(file_path))
     curvature_data3 = np.asarray(curvature_data3)
@@ -135,7 +137,7 @@ def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None, rotation_s
     for file_path in glob.glob(Dir+f"Z_fitted_*_{layer3}.npy"):
         if rotation_suffix  != "":
             frame_idx = int(file_path.split("_")[-2]) - 1
-            Z_fitted.append(rotation_logic(Dir, file_path, o_array[frame_idx], p_array[frame_idx]))
+            Z_fitted.append(rotation_logic(Dir, file_path, o_array[frame_idx], p_array[frame_idx], radius_threshold, box_size))
         else:
             Z_fitted.append(np.load(file_path))
     Z_fitted = np.asarray(Z_fitted)

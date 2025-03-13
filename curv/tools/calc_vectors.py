@@ -8,10 +8,11 @@ from ..core.fourier_core import Fourier_Series_Function
 from scipy.spatial import distance_matrix as dm
 import networkx as nx
 import pandas as pd
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
-def get_rotation_angles(out_dir,u,sele):
+def get_rotation_angles(out_dir,u,From,Until,Step,sele):
     u.trajectory[0]
     Lx, Ly, Lz = u.dimensions[:3]
     side_of_box = np.array([Lx, Ly/2, Lz/2])
@@ -25,12 +26,12 @@ def get_rotation_angles(out_dir,u,sele):
     
     o_list = []
     p_list = []
-    for ts in u.trajectory:
+    for ts in tqdm(u.trajectory[From:Until:Step]):
         selection=u.select_atoms(sele)
         com_selection = selection.center_of_mass()
         o_list.append(com_selection)
         
-        distances = np.linalg.norm(selection.positions[:,:2] - com_selection[:2], axis=1)
+        distances = np.linalg.norm(selection.positions[:,:2] - com_selection[:2])
         farthest_atom_index = np.argmax(distances)
         farthest_from_selection = selection.positions[farthest_atom_index]
         p_list.append(farthest_from_selection)
@@ -40,8 +41,8 @@ def get_rotation_angles(out_dir,u,sele):
     p_array = np.array(p_list)
     result_array = np.column_stack((o_array, p_array))
     
-    np.savetxt(f'o_{out_dir}', o_array)
-    np.savetxt(f'p_{out_dir}', p_array)
+    np.save(file = f'{out_dir}_o', arr = o_array)
+    np.save(file = f'{out_dir}_p', arr = p_array)
 
 def calc_vectors(args: List[str]) -> None:
     """Main entry point for Domain Placer tool"""
@@ -49,7 +50,10 @@ def calc_vectors(args: List[str]) -> None:
                                    formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-f','--trajectory',type=str,help="Specify the path to the trajectory file")
     parser.add_argument('-s','--structure',type=str,help="Specify the path to the structure file")
-    parser.add_argument('-o','--out',default="rotation_vectors.txt",type=str,help="Specify a path to the to written rotation vector file")
+    parser.add_argument('-F','--From',default=0,type=int,help="Discard all frames in the trajectory prior to the frame supplied here")
+    parser.add_argument('-U','--Until',default=None,type=int,help="Discard all frames in the trajectory after to the frame supplied here")
+    parser.add_argument('-S','--Step',default=1,type=int,help="Traverse the trajectory with a step length supplied here")
+    parser.add_argument('-o','--out',default="rotation_vectors",type=str,help="Specify a path to the to written rotation vector file")
     parser.add_argument('-n','--selection',type=str,help="Sepcifies reference point for the rotation")
     
     args = parser.parse_args(args)
@@ -57,7 +61,7 @@ def calc_vectors(args: List[str]) -> None:
 
     try:
         universe=mda.Universe(args.structure,args.trajectory)
-        get_rotation_angles(out_dir=args.out,u=universe,sele=args.selection)
+        get_rotation_angles(out_dir=args.out,u=universe,From=args.From,Until = args.Until,Step=args.Step,sele=args.selection)
 
     except Exception as e:
         logger.error(f"Error: {e}")
