@@ -158,6 +158,7 @@ def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None, rotation_s
         center_x = np.sum(X * Z_fitted) / np.sum(Z_fitted)
         center_y = np.sum(Y * Z_fitted) / np.sum(Z_fitted)
         distance_from_center = np.sqrt((X - center_x)**2 + (Y - center_y)**2)
+        radius_threshold *= 1.1
         mask = distance_from_center <= radius_threshold
         Z_fitted = np.ma.masked_where(~mask, Z_fitted)
         curvature_data1 = np.ma.masked_where(~mask, curvature_data1)
