@@ -63,7 +63,7 @@ def calc_height(out_dir,u,ndx,From=0,Until=None,Step=1,selection="name P"):
         fourier.Update_coff(fourier1.getAnm(),fourier2.getAnm()) #For the middle layer, update coefficients
         Z_fitted_1=np.array([fourier1.Z(xi, yi) for xi, yi in zip(X.flatten(), Y.flatten())]).reshape(X.shape)
         Z_fitted_2=np.array([fourier2.Z(xi, yi) for xi, yi in zip(X.flatten(), Y.flatten())]).reshape(X.shape)
-        Z_fitted=Z_fitted_1+Z_fitted_2/2
+        Z_fitted=(Z_fitted_1+Z_fitted_2)/2
         #Z_fitted=Z_fitted
 
         interp_func = RectBivariateSpline(X[0, :], Y[:, 0], Z_fitted)
