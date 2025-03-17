@@ -70,12 +70,14 @@ def calc(out_dir,u,ndx,From=0,Until=None,Step=1,layer_string="Both"):
                     Z_fitted_1=np.array([fourier1.Z(xi, yi) for xi, yi in zip(X.flatten(), Y.flatten())]).reshape(X.shape)
                     Z_fitted_2=np.array([fourier2.Z(xi, yi) for xi, yi in zip(X.flatten(), Y.flatten())]).reshape(X.shape)
                     Z_fitted=np.abs(Z_fitted_1-Z_fitted_2)
+                    Z_fitted_vmd=(Z_fitted_1+Z_fitted_2)/2
 
                 else:
                     fourier=fourier_by_layer(layer_group,box_size)
                     Z_fitted = np.array([fourier.Z(xi, yi) for xi, yi in zip(X.flatten(), Y.flatten())]).reshape(X.shape)
+                    Z_fitted_vmd=Z_fitted[:]
                 curvature = fourier.Curv(X, Y)
-                coordinates = np.vstack([X.flatten(), Y.flatten(), Z_fitted.flatten()]).T
+                coordinates = np.vstack([X.flatten(), Y.flatten(), Z_fitted_vmd.flatten()]).T
                 Z_fitted=Z_fitted / 10 #Scale from \AA to nm
 
                 np.save(f"{out_dir}/Z_fitted_{count}_{Layer}.npy",Z_fitted)
