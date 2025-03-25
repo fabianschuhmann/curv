@@ -18,11 +18,11 @@ def get_rotation_angles(out_dir,u,From,Until,Step,sele):
     side_of_box = np.array([Lx, Ly/2, Lz/2])
     selection=u.select_atoms(sele)
     com_selection = selection.center_of_mass()
-    dist_to_x_edge = min(com_selection[0], Lx - com_selection[0])
-    dist_to_y_edge = min(com_selection[1], Ly - com_selection[1])
+    #dist_to_x_edge = min(com_selection[0], Lx - com_selection[0])
+    #dist_to_y_edge = min(com_selection[1], Ly - com_selection[1])
+    dist_to_x_edge = Lx/2
+    dist_to_y_edge = Ly/2
     radius_threshold = min(dist_to_x_edge, dist_to_y_edge)
-    with open('radius_threshold.txt', 'w') as f:
-        f.write(str(radius_threshold))
     
     o_list = []
     p_list = []
@@ -41,8 +41,8 @@ def get_rotation_angles(out_dir,u,From,Until,Step,sele):
     p_array = np.array(p_list)
     result_array = np.column_stack((o_array, p_array))
     
-    np.save(file = f'{out_dir}_o', arr = o_array)
-    np.save(file = f'{out_dir}_p', arr = p_array)
+    np.save(file = f'{out_dir}rotation_vectors_o', arr = o_array)
+    np.save(file = f'{out_dir}rotation_vectors_p', arr = p_array)
 
 def calc_vectors(args: List[str]) -> None:
     """Main entry point for Domain Placer tool"""
@@ -53,7 +53,7 @@ def calc_vectors(args: List[str]) -> None:
     parser.add_argument('-F','--From',default=0,type=int,help="Discard all frames in the trajectory prior to the frame supplied here")
     parser.add_argument('-U','--Until',default=None,type=int,help="Discard all frames in the trajectory after to the frame supplied here")
     parser.add_argument('-S','--Step',default=1,type=int,help="Traverse the trajectory with a step length supplied here")
-    parser.add_argument('-o','--out',default="rotation_vectors",type=str,help="Specify a path to the to written rotation vector file")
+    parser.add_argument('-o','--out',default="",type=str,help="Specify a path to the to written rotation vector file")
     parser.add_argument('-n','--selection',type=str,help="Sepcifies reference point for the rotation")
     
     args = parser.parse_args(args)
@@ -66,3 +66,4 @@ def calc_vectors(args: List[str]) -> None:
     except Exception as e:
         logger.error(f"Error: {e}")
         raise
+
