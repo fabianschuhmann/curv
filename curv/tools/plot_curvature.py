@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import glob
 import matplotlib.colors as mcolors
 import warnings
-import pickle
+
 
 warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
@@ -21,6 +21,25 @@ def get_XY(box_size):
     X, Y = np.meshgrid(x, y)
     return X,Y
 
+def shift_x(matrix):
+    return np.hstack((matrix[:, 1:], matrix[:, :1]))
+
+def shift_y(matrix):
+    return np.vstack((matrix[1:], matrix[:1]))
+
+def recenter_matrix(matrix, O, P):
+    matrix_width, matrix_height = matrix.shape
+
+    shift_x = int(round(matrix_width // 2 - O[0]))
+    shift_y = int(round(matrix_height // 2 - O[1]))
+
+    new_O = (int(round(O[0] + shift_x)), int(round(O[1] + shift_y)))
+    new_P = (int(round(P[0] + shift_x)), int(round(P[1] + shift_y)))
+
+    recentered_matrix = np.roll(matrix, shift_x, axis=1)
+    recentered_matrix = np.roll(recentered_matrix, shift_y, axis=0)
+    return recentered_matrix, new_O, new_P
+
 def rotation_matrix(theta):
     theta_rad = np.radians(theta)
     return np.array([[np.cos(theta_rad), -np.sin(theta_rad)],
@@ -30,12 +49,15 @@ def rotation_logic(Dir,PATH, o, p, rt, bs):
     radius_threshold = rt
     curvature_data = []
     curvature_info = np.load(PATH)  # Load curvature data
+
+    if np.abs(o[0] - (bs[0]/2)) > 1:
+        curvature_info, new_O, new_P = recenter_matrix(curvature_info, o, p)
     
     box_size = bs
-    side_of_box = np.array([box_size[0], box_size[1]/2, box_size[2]/2])
+    side_of_box = np.array([box_size[0]/2, box_size[1]])
 
-    ba = p - o  # Vector from `o` to `p2`
-    bc = side_of_box - o  # Vector from `o` to reference side of the box
+    ba = p[:2] - o[:2]  # Vector from `o` to `p2`
+    bc = side_of_box - o[:2]  # Vector from `o` to reference side of the box
 
     # Project vectors onto XY-plane
     ba_2 = np.array([ba[0], ba[1]])
@@ -48,8 +70,8 @@ def rotation_logic(Dir,PATH, o, p, rt, bs):
     
     # Generate the grid of x, y positions corresponding to the curvature matrix
     x_coords, y_coords = np.meshgrid(
-        np.linspace(-side_of_box[0] / 2, side_of_box[0] / 2, curvature_info.shape[1]),
-        np.linspace(-side_of_box[1] / 2, side_of_box[1] / 2, curvature_info.shape[0])
+        np.linspace(-side_of_box[0] / 2, box_size[0] / 2, curvature_info.shape[1]),
+        np.linspace(-side_of_box[1] / 2, box_size[1] / 2, curvature_info.shape[0])
     )
     
     # Compute rotation matrix
@@ -78,21 +100,21 @@ def rotation_logic(Dir,PATH, o, p, rt, bs):
 
     return rotated_curvature
 
-def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None, rotation_suffix="", filename=""):
+def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None, rotation=False, filename=""):
     # Plots
     fontsize=24
     box_size=np.load(Dir+"boxsize.npy")
     X,Y = get_XY(box_size)
-    if rotation_suffix != "":
-        o_array = np.load(f'{rotation_suffix}_o.npy')
-        p_array = np.load(f'{rotation_suffix}_p.npy')
+    
+    if rotation == True:
+        o_array = np.load(Dir+"rotation_vectors_o.npy")
+        p_array = np.load(Dir+"rotation_vectors_p.npy")
         
-    with open('radius_threshold.txt', 'r') as f:
-        radius_threshold = float(f.read().strip())
+    radius_threshold = min(np.max(X/2), np.max(Y/2))
     # Upper layer 
     curvature_data1=[]
     for file_path in glob.glob(Dir+f"curvature_frame_*_{layer2}.npy"):
-        if rotation_suffix != "":
+        if rotation == True:
             frame_idx = int(file_path.split("_")[-2]) - 1
             curvature_data1.append(rotation_logic(Dir, file_path, o_array[frame_idx], p_array[frame_idx], radius_threshold, box_size))
         else:
@@ -103,7 +125,7 @@ def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None, rotation_s
     # Lower layer 
     curvature_data2=[]
     for file_path in glob.glob(Dir+f"curvature_frame_*_{layer1}.npy"):
-        if rotation_suffix  != "":
+        if rotation  == True:
             frame_idx = int(file_path.split("_")[-2]) - 1
             curvature_data2.append(rotation_logic(Dir, file_path, o_array[frame_idx], p_array[frame_idx], radius_threshold, box_size))
         else:
@@ -114,7 +136,7 @@ def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None, rotation_s
     # Middle layer
     curvature_data3=[]
     for file_path in glob.glob(Dir+f"curvature_frame_*_{layer3}.npy"):
-        if rotation_suffix  != "":
+        if rotation  == True:
             frame_idx = int(file_path.split("_")[-2]) - 1
             curvature_data3.append(rotation_logic(Dir, file_path, o_array[frame_idx], p_array[frame_idx], radius_threshold, box_size))
         else:
@@ -135,7 +157,7 @@ def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None, rotation_s
     # Thickness
     Z_fitted=[]
     for file_path in glob.glob(Dir+f"Z_fitted_*_{layer3}.npy"):
-        if rotation_suffix  != "":
+        if rotation  == True:
             frame_idx = int(file_path.split("_")[-2]) - 1
             Z_fitted.append(rotation_logic(Dir, file_path, o_array[frame_idx], p_array[frame_idx], radius_threshold, box_size))
         else:
@@ -152,9 +174,7 @@ def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None, rotation_s
         ax.set_xticklabels(['0', 'L$_x$'], fontsize=fontsize)  # Increase font size
         ax.set_yticklabels(['0', 'L$_y$'], fontsize=fontsize)
 
-    if rotation_suffix  != "":
-        with open('radius_threshold.txt', 'r') as f:
-            radius_threshold = float(f.read().strip())
+    if rotation == True:
         center_x = np.sum(X * Z_fitted) / np.sum(Z_fitted)
         center_y = np.sum(Y * Z_fitted) / np.sum(Z_fitted)
         distance_from_center = np.sqrt((X - center_x)**2 + (Y - center_y)**2)
@@ -226,7 +246,7 @@ def plot_curvature(args: List[str]) -> None:
     parser.add_argument('-l3','--layer3',type=str,default="Both",help="Custom name for layer 3. Layer 3 is the base line for the Z fitting plot")
     parser.add_argument('--minimum',type=float,default=None,help="Supply a custom colorbar value for the curvature plots (minimum)")
     parser.add_argument('--maximum',type=float,default=None,help="Supply a custom colorbar value for the curvature plots (maximum)")
-    parser.add_argument('-r','--rotation_suffix',type=str,default="",help="specify the suffix for the rotation vector files.")
+    parser.add_argument('-r','--rotation',type=bool,default=False,help="specify the suffix for the rotation vector files.")
     parser.add_argument('-o','--outfile',type=str,default="",help="Specify the path to save the image, if none is given, image is shown.")
    
     args = parser.parse_args(args)
@@ -238,9 +258,8 @@ def plot_curvature(args: List[str]) -> None:
         minmax=None
 
     try:
-        draw(Dir=args.numpys_directory,layer1=args.layer1,layer2=args.layer2,layer3=args.layer3,minmax=minmax,rotation_suffix=args.rotation_suffix,filename=args.outfile)
+        draw(Dir=args.numpys_directory,layer1=args.layer1,layer2=args.layer2,layer3=args.layer3,minmax=minmax,rotation=args.rotation,filename=args.outfile)
 
     except Exception as e:
         logger.error(f"Error: {e}")
         raise
-
