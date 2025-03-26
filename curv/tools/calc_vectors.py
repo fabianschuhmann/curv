@@ -18,28 +18,23 @@ def get_rotation_angles(out_dir,u,From,Until,Step,sele):
     side_of_box = np.array([Lx, Ly/2, Lz/2])
     selection=u.select_atoms(sele)
     com_selection = selection.center_of_mass()
-    #dist_to_x_edge = min(com_selection[0], Lx - com_selection[0])
-    #dist_to_y_edge = min(com_selection[1], Ly - com_selection[1])
-    dist_to_x_edge = Lx/2
-    dist_to_y_edge = Ly/2
-    radius_threshold = min(dist_to_x_edge, dist_to_y_edge)
     
     o_list = []
     p_list = []
     for ts in tqdm(u.trajectory[From:Until:Step]):
         selection=u.select_atoms(sele)
-        com_selection = selection.center_of_mass()
+        protein=u.select_atoms("protein")
+        pro_selection = protein.center_of_mass()[:2]
+        com_selection = selection.center_of_mass()[:2]
         o_list.append(com_selection)
         
-        distances = np.linalg.norm(selection.positions[:,:2] - com_selection[:2])
+        distances = np.linalg.norm(protein.positions[:,:2] - com_selection, axis=1)
         farthest_atom_index = np.argmax(distances)
-        farthest_from_selection = selection.positions[farthest_atom_index]
+        farthest_from_selection = protein.positions[farthest_atom_index, :2]
         p_list.append(farthest_from_selection)
 
-    #df = pd.DataFrame({'o': o_list, 'p': p_list})
     o_array = np.array(o_list)
     p_array = np.array(p_list)
-    result_array = np.column_stack((o_array, p_array))
     
     np.save(file = f'{out_dir}rotation_vectors_o', arr = o_array)
     np.save(file = f'{out_dir}rotation_vectors_p', arr = p_array)
@@ -66,4 +61,3 @@ def calc_vectors(args: List[str]) -> None:
     except Exception as e:
         logger.error(f"Error: {e}")
         raise
-
