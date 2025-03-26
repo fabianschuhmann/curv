@@ -45,19 +45,25 @@ def rotation_matrix(theta):
     return np.array([[np.cos(theta_rad), -np.sin(theta_rad)],
                      [np.sin(theta_rad), np.cos(theta_rad)]])
 
-def rotation_logic(Dir,PATH, o, p, rt, bs):
+def rotation_logic(Dir, PATH, o, p, rt, bs):
     radius_threshold = rt
     curvature_data = []
     curvature_info = np.load(PATH)  # Load curvature data
 
-    if np.abs(o[0] - (bs[0]/2)) > 1:
-        curvature_info, new_O, new_P = recenter_matrix(curvature_info, o, p)
-    
+    new_O, new_P = o, p  # Initialize new_O and new_P to default values
+
+    curvature_info, new_O, new_P = recenter_matrix(curvature_info, o, p)
+    new_O = new_O * (bs[:2]/100)
+    new_P = new_P * (bs[:2]/100)
+
     box_size = bs
     side_of_box = np.array([box_size[0]/2, box_size[1]])
 
-    ba = p[:2] - o[:2]  # Vector from `o` to `p2`
-    bc = side_of_box - o[:2]  # Vector from `o` to reference side of the box
+    new_O_arr = np.array(new_O)
+    new_P_arr = np.array(new_P)
+
+    ba = new_P_arr[:2] - new_O_arr[:2]  # Vector from `o` to `p2`
+    bc = side_of_box - new_O_arr[:2]  # Vector from `o` to reference side of the box
 
     # Project vectors onto XY-plane
     ba_2 = np.array([ba[0], ba[1]])
@@ -67,6 +73,14 @@ def rotation_logic(Dir,PATH, o, p, rt, bs):
     cos_theta = np.dot(ba_2, bc_2) / (np.linalg.norm(ba_2) * np.linalg.norm(bc_2))
     cos_theta = np.clip(cos_theta, -1, 1)  # Avoid floating-point errors
     theta = np.degrees(np.arccos(cos_theta))
+
+    cross_product = ba_2[0] * bc_2[1] - ba_2[1] * bc_2[0]
+
+    # Determine if rotation is clockwise or counterclockwise
+    if cross_product > 0:
+        theta = +theta  # Positive rotation
+    elif cross_product < 0:
+        theta = -theta  # Negative rotation
     
     # Generate the grid of x, y positions corresponding to the curvature matrix
     x_coords, y_coords = np.meshgrid(
@@ -75,7 +89,7 @@ def rotation_logic(Dir,PATH, o, p, rt, bs):
     )
     
     # Compute rotation matrix
-    R = rotation_matrix(-1*theta)
+    R = rotation_matrix(theta)
     
     # Copy curvature matrix
     rotated_curvature = curvature_info.copy()
@@ -86,8 +100,8 @@ def rotation_logic(Dir,PATH, o, p, rt, bs):
         for j in range(curvature_info.shape[1]):  # Iterate over columns
             x, y = x_coords[i, j], y_coords[i, j]
             distance = np.sqrt(x**2 + y**2)  # Distance from the center
-            
-            if distance <= radius_threshold:
+
+            if distance <= (radius_threshold*1.2):
                 rotated_x, rotated_y = np.dot(R, np.array([x, y]))  # Rotate (x, y)
                 
                 # Find closest indices in the original grid
@@ -175,11 +189,13 @@ def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None, rotation=F
         ax.set_yticklabels(['0', 'L$_y$'], fontsize=fontsize)
 
     if rotation == True:
-        center_x = np.sum(X * Z_fitted) / np.sum(Z_fitted)
-        center_y = np.sum(Y * Z_fitted) / np.sum(Z_fitted)
-        distance_from_center = np.sqrt((X - center_x)**2 + (Y - center_y)**2)
-        radius_threshold *= 1.1
+        matrix_size = 100
+        matrix_data = np.random.rand(matrix_size, matrix_size)
+        radius_threshold = 51
+        x_coords, y_coords = np.meshgrid(np.linspace(-matrix_size / 2, matrix_size / 2, matrix_size), np.linspace(-matrix_size / 2, matrix_size / 2, matrix_size))
+        distance_from_center = np.sqrt(x_coords**2 + y_coords**2)
         mask = distance_from_center <= radius_threshold
+        masked_data = np.ma.masked_where(~mask, matrix_data)
         Z_fitted = np.ma.masked_where(~mask, Z_fitted)
         curvature_data1 = np.ma.masked_where(~mask, curvature_data1)
         curvature_data2 = np.ma.masked_where(~mask, curvature_data2)
@@ -263,3 +279,4 @@ def plot_curvature(args: List[str]) -> None:
     except Exception as e:
         logger.error(f"Error: {e}")
         raise
+
