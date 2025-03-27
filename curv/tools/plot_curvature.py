@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import glob
 import matplotlib.colors as mcolors
 import warnings
+from scipy.ndimage import rotate
 
 
 warnings.filterwarnings("ignore")
@@ -28,17 +29,28 @@ def shift_y(matrix):
     return np.vstack((matrix[1:], matrix[:1]))
 
 def recenter_matrix(matrix, O, P):
+    # Calculate matrix dimensions
     matrix_width, matrix_height = matrix.shape
 
+    # Calculate shift amounts to center O (center of mass)
     shift_x = int(round(matrix_width // 2 - O[0]))
     shift_y = int(round(matrix_height // 2 - O[1]))
 
+    # Apply the same shift to both O and P to ensure they stay aligned
     new_O = (int(round(O[0] + shift_x)), int(round(O[1] + shift_y)))
-    new_P = (int(round(P[0] + shift_x)), int(round(P[1] + shift_y)))
+    new_P = (int(round(P[0] + shift_x)), int(round(P[1] + shift_y)))  # Same shift applied to P
 
+    # Print shift amounts and new positions for debugging
+    print(f"Shift amounts: {shift_x}, {shift_y}")
+    print(f"New O: {new_O}, New P: {new_P}")
+
+    # Recenter the matrix by applying the calculated shift
     recentered_matrix = np.roll(matrix, shift_x, axis=1)
     recentered_matrix = np.roll(recentered_matrix, shift_y, axis=0)
+
     return recentered_matrix, new_O, new_P
+
+
 
 def rotation_matrix(theta):
     theta_rad = np.radians(theta)
@@ -55,7 +67,7 @@ def rotation_logic(Dir, PATH, o, p, rt, bs):
     curvature_info, new_O, new_P = recenter_matrix(curvature_info, o, p)
     new_O = new_O * (bs[:2]/100)
     new_P = new_P * (bs[:2]/100)
-
+    
     box_size = bs
     side_of_box = np.array([box_size[0]/2, box_size[1]])
 
@@ -81,38 +93,15 @@ def rotation_logic(Dir, PATH, o, p, rt, bs):
         theta = +theta  # Positive rotation
     elif cross_product < 0:
         theta = -theta  # Negative rotation
+
+    return rotate(curvature_info, theta, reshape = False)
     
-    # Generate the grid of x, y positions corresponding to the curvature matrix
-    x_coords, y_coords = np.meshgrid(
-        np.linspace(-side_of_box[0] / 2, box_size[0] / 2, curvature_info.shape[1]),
-        np.linspace(-side_of_box[1] / 2, box_size[1] / 2, curvature_info.shape[0])
-    )
+def proper_rotate(curvature_info, angle, fill_value=np.nan):
+    """Rotate the entire matrix using scipy's rotate with boundary handling."""
+    # Use scipy to rotate the matrix, preserving the size
+    rotated_matrix = rotate(curvature_info, angle, reshape=True, cval=fill_value)
     
-    # Compute rotation matrix
-    R = rotation_matrix(theta)
-    
-    # Copy curvature matrix
-    rotated_curvature = curvature_info.copy()
-
-    rotated_curvature_ = []
-    # Rotate only points within the calculated radious threshold
-    for i in range(curvature_info.shape[0]):  # Iterate over rows
-        for j in range(curvature_info.shape[1]):  # Iterate over columns
-            x, y = x_coords[i, j], y_coords[i, j]
-            distance = np.sqrt(x**2 + y**2)  # Distance from the center
-
-            if distance <= (radius_threshold*1.2):
-                rotated_x, rotated_y = np.dot(R, np.array([x, y]))  # Rotate (x, y)
-                
-                # Find closest indices in the original grid
-                i_new = np.argmin(np.abs(y_coords[:, 0] - rotated_y))
-                j_new = np.argmin(np.abs(x_coords[0, :] - rotated_x))
-
-                # Assign rotated values while keeping boundaries
-                if 0 <= i_new < curvature_info.shape[0] and 0 <= j_new < curvature_info.shape[1]:
-                    rotated_curvature[i_new, j_new] = curvature_info[i, j]
-
-    return rotated_curvature
+    return rotated_matrix
 
 def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None, rotation=False, filename=""):
     # Plots
@@ -279,4 +268,3 @@ def plot_curvature(args: List[str]) -> None:
     except Exception as e:
         logger.error(f"Error: {e}")
         raise
-
