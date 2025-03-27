@@ -12,26 +12,16 @@ from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
-def get_rotation_angles(out_dir,u,From,Until,Step,sele):
-    u.trajectory[0]
-    Lx, Ly, Lz = u.dimensions[:3]
-    side_of_box = np.array([Lx, Ly/2, Lz/2])
-    selection=u.select_atoms(sele)
-    com_selection = selection.center_of_mass()
-    
+def get_rotation_angles(out_dir,u,From,Until,Step,sele1, sele2):
     o_list = []
     p_list = []
     for ts in tqdm(u.trajectory[From:Until:Step]):
-        selection=u.select_atoms(sele)
-        protein=u.select_atoms("protein")
-        pro_selection = protein.center_of_mass()[:2]
-        com_selection = selection.center_of_mass()[:2]
-        o_list.append(com_selection)
-        
-        distances = np.linalg.norm(protein.positions[:,:2] - com_selection, axis=1)
-        farthest_atom_index = np.argmax(distances)
-        farthest_from_selection = protein.positions[farthest_atom_index, :2]
-        p_list.append(farthest_from_selection)
+        selection1=u.select_atoms(sele1)
+        selection2=u.select_atoms(sele2)
+        com_selection1 = selection1.center_of_mass()[:2]
+        com_selection2 = selection2.center_of_mass()[:2]
+        o_list.append(com_selection1)
+        p_list.append(com_selection2)
 
     o_array = np.array(o_list)
     p_array = np.array(p_list)
@@ -49,14 +39,15 @@ def calc_vectors(args: List[str]) -> None:
     parser.add_argument('-U','--Until',default=None,type=int,help="Discard all frames in the trajectory after to the frame supplied here")
     parser.add_argument('-S','--Step',default=1,type=int,help="Traverse the trajectory with a step length supplied here")
     parser.add_argument('-o','--out',default="",type=str,help="Specify a path to the to written rotation vector file")
-    parser.add_argument('-n','--selection',type=str,help="Sepcifies reference point for the rotation")
+    parser.add_argument('-p1','--selection1',type=str,help="Sepcifies reference point 1 for the selection")
+    parser.add_argument('-p2','--selection2',type=str,help="Sepcifies reference point 2 for the selection")
     
     args = parser.parse_args(args)
     logging.basicConfig(level=logging.INFO)
 
     try:
         universe=mda.Universe(args.structure,args.trajectory)
-        get_rotation_angles(out_dir=args.out,u=universe,From=args.From,Until = args.Until,Step=args.Step,sele=args.selection)
+        get_rotation_angles(out_dir=args.out,u=universe,From=args.From,Until = args.Until,Step=args.Step,sele1=args.selection1, sele2=args.selection2)
 
     except Exception as e:
         logger.error(f"Error: {e}")
