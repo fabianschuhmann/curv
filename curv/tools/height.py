@@ -71,7 +71,7 @@ def calc_height(out_dir,u,ndx,From=0,Until=None,Step=1,selection="name P"):
             pos=atom.position
             name=f"{atom.resname}_{atom.resid}"
             index=atom.index
-            x_p, y_p, z_p = pos[0], pos[1], pos[2]  
+            x_p, y_p, z_p = pos[0], pos[1], pos[2]
 
             z_surf = interp_func(x_p, y_p)[0, 0]
 
