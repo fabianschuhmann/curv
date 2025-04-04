@@ -20,7 +20,7 @@ def get_XY(box_size):
     X, Y = np.meshgrid(x, y)
     return X,Y
 
-def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None,filename=""):
+def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None,t_minmax=None,filename=""):
     # Plots
     fontsize=24
     box_size=np.load(Dir+"boxsize.npy")
@@ -56,6 +56,7 @@ def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None,filename=""
         bmin, bmax =np.min([np.min(x) for x in catted]),np.max([np.max(x) for x in catted])
         print(f"Automatically, the values would have been assigned to {np.round(bmin,3)} and {np.round(bmax,3)}")
 
+
     # Thickness
     Z_fitted=[]
     for file_path in glob.glob(Dir+f"Z_fitted_*_{layer3}.npy"):
@@ -74,7 +75,14 @@ def draw(Dir,layer1="Upper",layer2="Lower",layer3="Both",minmax=None,filename=""
 
 
     # First subplot: Fourier Approximation
-    contour1 = axes[0].contourf(X, Y, Z_fitted, cmap="viridis")
+    if t_minmax is not None:
+        t_norm=mcolors.Normalize(vmin=t_minmax[0],vmax=t_minmax[1])
+        t_levels=np.linspace(t_minmax[0],t_minmax[1],20)
+        contour1 = axes[0].contourf(X, Y, Z_fitted, cmap="viridis",norm=t_norm,levels=t_levels)
+        print(f"A custom thickness minimum and maximum has been set to {t_minmax[0]} and {t_minmax[1]}.")
+        print(f"Automatically, the values would have been assigned to {np.round(np.min(Z_fitted),3)} and {np.round(np.max(Z_fitted),3)}")
+    else:
+        contour1 = axes[0].contourf(X, Y, Z_fitted, cmap="viridis")
     axes[0].set_title("Fourier Approximation",fontsize=fontsize)
     #axes[0].set_xlabel("X [nm]")
     #axes[0].set_ylabel("Y [nm]")
@@ -134,6 +142,8 @@ def plot_curvature(args: List[str]) -> None:
     parser.add_argument('-l3','--layer3',type=str,default="Both",help="Custom name for layer 3. Layer 3 is the base line for the Z fitting plot")
     parser.add_argument('--minimum',type=float,default=None,help="Supply a custom colorbar value for the curvature plots (minimum)")
     parser.add_argument('--maximum',type=float,default=None,help="Supply a custom colorbar value for the curvature plots (maximum)")
+    parser.add_argument('--thickness_minimum',type=float,default=None,help="Supply a custom colorbar value for the thickness plots (minimum)")
+    parser.add_argument('--thickness_maximum',type=float,default=None,help="Supply a custom colorbar value for the thickness plots (maximum)")
     parser.add_argument('-o','--outfile',type=str,default="",help="Specify the path to save the image, if none is given, image is shown.")
    
     args = parser.parse_args(args)
@@ -143,9 +153,13 @@ def plot_curvature(args: List[str]) -> None:
         minmax=[args.minimum,args.maximum]
     else:
         minmax=None
+    if args.thickness_minimum is not None and args.thickness_maximum is not None:
+        thickness_minmax=[args.thickness_minimum,args.thickness_maximum]
+    else:
+        thickness_minmax=None
 
     try:
-        draw(Dir=args.numpys_directory,layer1=args.layer1,layer2=args.layer2,layer3=args.layer3,minmax=minmax,filename=args.outfile)
+        draw(Dir=args.numpys_directory,layer1=args.layer1,layer2=args.layer2,layer3=args.layer3,minmax=minmax,t_minmax=thickness_minmax,filename=args.outfile)
 
     except Exception as e:
         logger.error(f"Error: {e}")
