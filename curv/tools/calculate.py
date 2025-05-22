@@ -38,35 +38,71 @@ def fourier_by_layer(layer_group,box_size,Nx=2,Ny=2):
     return fourier
 
 def calc(out_dir,u,ndx,From=0,Until=None,Step=1,layer_string="Both"):
+    """
+    out_dir: string where to save the output
+    u: MDAnalysis universe object with the trajectory loaded.
+    ndx: string with the path to the index file containing the indexes of head groups of the upper and lower monolayers.
+    From: int, the first frame to be considered in the trajectory
+    Until: int, the last frame to be considered in the trajectory
+    Step: int, the step length to be used when traversing the trajectory
+    layer_string: string, which leaflet to consider. Default is "Both". If you want to consider only one leaflet, use "Upper" or "Lower". 
+    """
+
+    #Determining how many frames to consider
     if Until is None:
         Until=len(u.trajectory)
+    #Reads upper and lower monolayer.
     ndx = read_ndx(ndx)
+    #Determinig what is the box size, saving it, and getting Lx and Ly.
     box_size=u.trajectory[0].dimensions[:3]
     np.save(file=f"{out_dir}/boxsize.npy",arr=box_size)
     X,Y=get_XY(box_size)
+
+    #Determining which leaflet to consider
     if layer_string.lower()!="Both".lower():
         LayerList=[layer_string]
     else:
         LayerList=["Upper","Lower","Both"]
+        #Small change. 
+        LayerList=["Both"]
+    #Looping to selected leaflets.
     for Layer in LayerList:
+        #selecting atoms in the prefered state as variables
         if Layer=="Both":
             layer_group=u.atoms[[x-1 for x in ndx["Upper"]]]
             layer_group_2=u.atoms[[x-1 for x in ndx["Lower"]]]
         else:
             layer_group=u.atoms[[x-1 for x in ndx[Layer]]]
+        # We prepare a wite.
         with mda.coordinates.XTC.XTCWriter(f"{out_dir}/fourier_curvature_fitting_{Layer}.xtc", n_atoms=100000) as writer:  # Adjust n_atoms as needed
             count = 0
+            # t is a counter and ts is the actual frame.
             for t,ts in tqdm(enumerate(u.trajectory[From:Until:Step])):
                 count += 1
                 #if count >= 10:
                 #    break
                 
+                #both layers
+                """In this logic, it is obviously wrong to go two times through upper and lower monolayers and should be optimized."""
                 if Layer=="Both":
+                    #Nx and Ny should become input parameters
                     Nx, Ny = 2, 2
+                    #Calculate upper monolayer fourier transform (layer group is an object that changes automatically)
                     fourier1=fourier_by_layer(layer_group,box_size)
+                    #Calculate lower monolayer fourier transform
                     fourier2=fourier_by_layer(layer_group_2,box_size)
+                    #Object called fourier
                     fourier=Fourier_Series_Function(box_size[0], box_size[1], Nx, Ny)
+                    #update fourier coefficients
                     fourier.Update_coff(fourier1.getAnm(),fourier2.getAnm()) #For the middle layer, update coefficients
+                    #Save fourier coefficients
+                    np.save(f"{out_dir}/Anm_{count}.npy",(fourier.getAnm()).flatten())
+
+                    #In here, I just need to reshape the data which I will store and use latter. 
+
+                    
+
+
                     Z_fitted_1=np.array([fourier1.Z(xi, yi) for xi, yi in zip(X.flatten(), Y.flatten())]).reshape(X.shape)
                     Z_fitted_2=np.array([fourier2.Z(xi, yi) for xi, yi in zip(X.flatten(), Y.flatten())]).reshape(X.shape)
                     Z_fitted=np.abs(Z_fitted_1-Z_fitted_2)
@@ -76,6 +112,7 @@ def calc(out_dir,u,ndx,From=0,Until=None,Step=1,layer_string="Both"):
                     fourier=fourier_by_layer(layer_group,box_size)
                     Z_fitted = np.array([fourier.Z(xi, yi) for xi, yi in zip(X.flatten(), Y.flatten())]).reshape(X.shape)
                     Z_fitted_vmd=Z_fitted[:]
+                
                 curvature = fourier.Curv(X, Y)
                 coordinates = np.vstack([X.flatten(), Y.flatten(), Z_fitted_vmd.flatten()]).T
                 Z_fitted=Z_fitted / 10 #Scale from \AA to nm
@@ -87,7 +124,7 @@ def calc(out_dir,u,ndx,From=0,Until=None,Step=1,layer_string="Both"):
 
                 np.save(f"{out_dir}/curvature_frame_{count}_{Layer}.npy", curvature)
 
-                
+                #Generates visualization
                 pseudo_universe = mda.Universe.empty(n_atoms=coordinates.shape[0], trajectory=True)
                 pseudo_universe.atoms.positions = coordinates
                 pseudo_universe.dimensions = ts.dimensions

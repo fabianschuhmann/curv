@@ -6,6 +6,7 @@ from curv.tools.calculate import calculate
 from curv.core.plot import main as plot
 from curv.tools.write_ndx import write_ndx
 from curv.tools.height import height
+from curv.tools.matrix import matrix
 
 
 
@@ -24,6 +25,8 @@ def run_module(module_name, args):
         write_ndx(args)
     elif module_name == 'height':
         height(args)
+    elif module_name == 'matrix':
+        matrix(args)
     else:
         print(f"Unknown module: {module_name}")
 
@@ -34,7 +37,7 @@ def main():
     """
 
     # define the python based modules
-    modules = ['calculate', 'plot', 'write_ndx','height']
+    modules = ['calculate', 'plot', 'write_ndx','height','matrix']
 
     # parse arguments before a calling module
     parser = argparse.ArgumentParser(
