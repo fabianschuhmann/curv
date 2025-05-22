@@ -14,10 +14,10 @@ setup(
     },
     include_package_data=True,
     python_requires='>=3.6',
-    install_requires=['numpy','scipy','networkx','matplotlib','tqdm','glob','os','MDAnalysis'],
+    install_requires=['numpy','scipy','networkx','matplotlib','tqdm','MDAnalysis'],
     entry_points={
-        'console_scripts': [
-            'curv=.run:main',
+    'console_scripts': [
+        'curv=curv.run:main',
         ],
     },
 )

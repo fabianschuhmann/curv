@@ -1,4 +1,6 @@
-numpy
-networkx
-scipy
 MDAnalysis
+matplotlib
+networkx
+numpy
+scipy
+tqdm
