@@ -5,6 +5,7 @@ import argparse
 import logging
 from typing import List, Optional, Sequence, Dict
 from ..core.fourier_core import Fourier_Series_Function
+from ..core.matrix_core import Matrix_Function
 import os
 import glob 
 
@@ -24,16 +25,20 @@ def calc(in_dir,out_dir,Nx,Ny):
     fourier_data=[]
     for file_path in glob.glob(in_dir+f"Anm_*.npy"):
         fourier_data.append(np.load(file_path))
-
+    box_size = np.load(in_dir+"boxsize.npy")
     fourier_data = np.asarray(fourier_data)
+    matrix_function=Matrix_Function(box_size[0],box_size[1],Nx,Ny)
     A_vector = np.mean(fourier_data,axis=0)   
     A_matrix = np.mean(
         fourier_data[:, :, None] * fourier_data[:, None, :],
         axis=0
     )  # shape: (n_coeffs, n_coeffs)
     #save this
-    np.save(file=f"{out_dir}/A_matrix.npy",arr=A_matrix)
-    np.save(file=f"{out_dir}/A_vector.npy",arr=A_vector)
+    matrix_function.get_A_vector(A_vector)
+    matrix_function.get_A_matrix(A_matrix)
+    matrix_function.make_sigmaA_matrix()
+    matrix_function.make_q_vector()
+    matrix_function.make_Hm_matrix()
 
 
 def matrix(args: List[str]) -> None:
